@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015 Audun Gravdal Johansen
-"""Defines class to operate on SESAM hydrodynamic data.
-"""
+"""Defines class to operate on SESAM hydrodynamic data."""
 
 from __future__ import division
 
@@ -12,8 +11,7 @@ from ..exceptions import ResultError, NoSuchRecordError
 
 
 class HydroData(SifData):
-    """Class to operate on SESAM hydrodynamic data.
-    """
+    """Class to operate on SESAM hydrodynamic data."""
 
     # mulitbody and timedomain results not tested/implemented yet !!
 
@@ -49,50 +47,54 @@ class HydroData(SifData):
     #     domain? other situations?)
 
     def __init__(self, tbgroup, fileinstance):
-        """
-        """
+        """ """
         super(HydroData, self).__init__(tbgroup, fileinstance)
 
-        wdresref, dirs, freqs, times = self._get_record('wdresref')
+        wdresref, dirs, freqs, times = self._get_record("wdresref")
 
         # get unique frequencies without sorting
-        _, idx = np.unique(freqs[:,1], return_index=True)
-        self._angfreqs = freqs[:,1][np.sort(idx)]
-        self._periods = 2*np.pi / self._angfreqs
+        _, idx = np.unique(freqs[:, 1], return_index=True)
+        self._angfreqs = freqs[:, 1][np.sort(idx)]
+        if np.any(self._angfreqs <= 0):
+            self._lim_freq = True
+        else:
+            self._lim_freq = False
+
+        self._periods = 2 * np.pi / self._angfreqs
 
         # get unique directions without sorting
-        _, idx = np.unique(dirs[:,1], return_index=True)
-        self._directions = dirs[:,1][np.sort(idx)]
+        _, idx = np.unique(dirs[:, 1], return_index=True)
+        self._directions = dirs[:, 1][np.sort(idx)]
 
-        self._timesteps = np.unique(times[:,1])
+        self._timesteps = np.unique(times[:, 1])
 
         self._nfreqs = len(self._angfreqs)
         self._ndirs = len(self._directions)
         self._ntimesteps = len(self._timesteps)
 
         try:
-            self._nsections = len(self._get_record('wsection'))
+            self._nsections = len(self._get_record("wsection"))
         except NoSuchRecordError:
             self._nsections = 0
 
         try:
-            self._npoints = len(self._get_record('wfkpoint'))
+            self._npoints = len(self._get_record("wfkpoint"))
         except NoSuchRecordError:
             self._npoints = 0
 
         # set g, ro and depth as global instance variables
-        wglobdef = self._get_record('wglobdef')[0]  # allways 1 record only
-        self.g = wglobdef['g']
-        self.ro = wglobdef['ro']
-        self.depth = wglobdef['depth']
+        wglobdef = self._get_record("wglobdef")[0]  # allways 1 record only
+        self.g = wglobdef["g"]
+        self.ro = wglobdef["ro"]
+        self.depth = wglobdef["depth"]
 
-        self.domaintype = 'frequency' if self._nfreqs else 'time'
+        self.domaintype = "frequency" if self._nfreqs else "time"
 
     def _get_ibcond(self, bodyid=1):
-            # get internal body and condition reference number for bodyid
-            # assume only one ibcond per bodyid (not the case if fwd speed?)
-            wbodcon, refcond = self._get_record('wbodcon')
-            return getrow(wbodcon, 'ibody=={}'.format(bodyid))['ibcond']
+        # get internal body and condition reference number for bodyid
+        # assume only one ibcond per bodyid (not the case if fwd speed?)
+        wbodcon, refcond = self._get_record("wbodcon")
+        return getrow(wbodcon, "ibody=={}".format(bodyid))["ibcond"]
 
     def _get_results(self, rec_name, bodyid, *fields):
         """Get a set of columns (given by `fields`) from result records
@@ -104,7 +106,7 @@ class HydroData(SifData):
         if bodyid:
             ibcond = self._get_ibcond(bodyid)
             # get all records for this ibcond
-            res_recs = res.read_where('ibcond=={}'.format(ibcond))
+            res_recs = res.read_where("ibcond=={}".format(ibcond))
         else:
             res_recs = res[:]
         # return res_recs[list(fields)]  # structured array
@@ -115,37 +117,34 @@ class HydroData(SifData):
     def _assert_domaintype(self, domaintype):
         self._check_isopen()
         if not domaintype == self.domaintype:
-            raise ResultError('No {} domain results on {}'.format(domaintype,
-                                                                  self.name))
+            raise ResultError(
+                "No {} domain results on {}".format(domaintype, self.name)
+            )
 
     def get_angular_freqs(self):
-        """Get angular frequencies.
-        """
-        self._assert_domaintype('frequency')
+        """Get angular frequencies."""
+        self._assert_domaintype("frequency")
         return self._angfreqs
 
     def get_periods(self):
-        """Get periods.
-        """
-        self._assert_domaintype('frequency')
+        """Get periods."""
+        self._assert_domaintype("frequency")
         return self._periods
 
-    def get_directions(self, unit='degrees'):
-        """Get wave directions in 'degrees' (default) or 'radians'
-        """
+    def get_directions(self, unit="degrees"):
+        """Get wave directions in 'degrees' (default) or 'radians'"""
         self._check_isopen()
 
-        if unit == 'degrees':
-            return self._directions * 180. / np.pi
-        elif unit == 'radians':
+        if unit == "degrees":
+            return self._directions * 180.0 / np.pi
+        elif unit == "radians":
             return self._directions
         else:
             raise ValueError("unit must be 'degrees' or 'radians'")
 
     def get_timesteps(self):
-        """Get time instants.
-        """
-        self._assert_domaintype('time')
+        """Get time instants."""
+        self._assert_domaintype("time")
         return self._timesteps
 
     def get_sections(self):
@@ -158,8 +157,8 @@ class HydroData(SifData):
             and *p3*. See the Sesam Interface File documentation for an
             explanation of these fields.
         """
-        wsection = self._get_record('wsection')
-        return wsection[:][['secusr','isecty','p1','p2','p3']]
+        wsection = self._get_record("wsection")
+        return wsection[:][["secusr", "isecty", "p1", "p2", "p3"]]
 
     def get_points(self):
         """Get fluid kinematics reference points
@@ -171,23 +170,20 @@ class HydroData(SifData):
             the second axis represent the x, y and z coordinates.
         """
 
-
-        wfkpoint = self._get_record('wfkpoint')
-        return wfkpoint[:]['fkpnt']
+        wfkpoint = self._get_record("wfkpoint")
+        return wfkpoint[:]["fkpnt"]
 
     def get_bodyproperties(self, bodyid=1):
-        """Get body characteristica as a dict
-        """
-        wbody = self._get_record('wbody')
+        """Get body characteristica as a dict"""
+        wbody = self._get_record("wbody")
         ibcond = self._get_ibcond(bodyid)
-        row = getrow(wbody, 'ibcond=={}'.format(ibcond))
+        row = getrow(wbody, "ibcond=={}".format(ibcond))
         bodyprops = dict(zip(row.dtype.names, row))
-        del bodyprops['nfield']
-        del bodyprops['ibcond']
+        del bodyprops["nfield"]
+        del bodyprops["ibcond"]
         return bodyprops
 
     def get_motion_raos(self, bodyid=1):
-
         """Get rigid body motion RAOs.
 
         Parameters
@@ -205,11 +201,14 @@ class HydroData(SifData):
 
         # should include an 'uncoupled' option ?
 
-        self._assert_domaintype('frequency')
-        data = self._get_results('w1motion', bodyid, 'data')
+        self._assert_domaintype("frequency")
+        data = self._get_results("w1motion", bodyid, "data")
 
         # reshape data to (dof, direction, frequency)
-        data.shape = (self._ndirs, self._nfreqs, 6)
+        if self._lim_freq:
+            data.shape = (self._ndirs, self._nfreqs - 2, 6)
+        else:
+            data.shape = (self._ndirs, self._nfreqs, 6)
         return np.rollaxis(data, 2)
 
     def get_excitationforce_raos(self, bodyid=1):
@@ -228,11 +227,14 @@ class HydroData(SifData):
             and 3rd to frequency.
         """
 
-        self._assert_domaintype('frequency')
-        data = self._get_results('w1exforc', bodyid, 'data')
+        self._assert_domaintype("frequency")
+        data = self._get_results("w1exforc", bodyid, "data")
 
         # reshape data to (dof, direction, frequency)
-        data.shape = (self._ndirs, self._nfreqs, 6)
+        if self._lim_freq:
+            data.shape = (self._ndirs, self._nfreqs - 2, 6)
+        else:
+            data.shape = (self._ndirs, self._nfreqs, 6)
         return np.rollaxis(data, 2)
 
     def get_sectionforce_raos(self, bodyid=1):
@@ -251,14 +253,17 @@ class HydroData(SifData):
             of freedom, 3rd to direction and 4th to frequency.
         """
 
-        self._assert_domaintype('frequency')
-        data = self._get_results('w1sforce', bodyid, 'data')
+        self._assert_domaintype("frequency")
+        data = self._get_results("w1sforce", bodyid, "data")
 
         # reshape data to (section, dof, direction, frequency)
-        data.shape = (self._nsections, self._ndirs, self._nfreqs, 6)
+        if self._lim_freq:
+            data.shape = (self._nsections, self._ndirs, self._nfreqs - 2, 6)
+        else:
+            data.shape = (self._nsections, self._ndirs, self._nfreqs, 6)
         return np.rollaxis(data, 3, 1)
 
-    def get_fluidkinematics_raos(self, kind='elevation'):
+    def get_fluidkinematics_raos(self, kind="elevation"):
         """Get fluid kinematics.
 
         Parameters
@@ -276,21 +281,20 @@ class HydroData(SifData):
                 dimension represent the x, y and z components of the paricle
                 velocity
         """
-        self._assert_domaintype('frequency')
-        p, v = self._get_results('wfluidkn', None, 'p', 'v')
-        if kind in ('elevation', 'pressure'):
+        self._assert_domaintype("frequency")
+        p, v = self._get_results("wfluidkn", None, "p", "v")
+        if kind in ("elevation", "pressure"):
             p.shape = (self._ndirs, self._nfreqs, self._npoints)
             p = np.rollaxis(p, 2)
-            if kind == 'elevation':
+            if kind == "elevation":
                 return p / self.ro / self.g
             return p
-        elif kind == 'velocity':
+        elif kind == "velocity":
             v.shape = (self._ndirs, self._nfreqs, self._npoints, 3)
             v = np.rollaxis(v, 3)
             return np.rollaxis(v, 3)
         else:
-            raise ValueError("kind must be 'elevation', 'pressure' or "
-                             "'velocity'")
+            raise ValueError("kind must be 'elevation', 'pressure' or 'velocity'")
 
     def get_matrix(self, mtyp, bodyid=1, bodyid2=1):
         """Get matrix.
@@ -319,48 +323,41 @@ class HydroData(SifData):
             | shape = (6, 6, len(freqs)) if frequency dependant
         """
 
-        w1matrix = self._get_record('w1matrix')
+        w1matrix = self._get_record("w1matrix")
         ibconi = self._get_ibcond(bodyid)
         ibconj = self._get_ibcond(bodyid2)
-        cond = '(ibconi=={}) & (ibconj=={}) & (imtyp=={})'.format(ibconi,
-                                                                  ibconj,
-                                                                  mtyp)
+        cond = "(ibconi=={}) & (ibconj=={}) & (imtyp=={})".format(ibconi, ibconj, mtyp)
         if mtyp in (11, 22, 31, 32):  # freq indep
-            return getrow(w1matrix, cond)['hmat']
+            return getrow(w1matrix, cond)["hmat"]
         elif mtyp in (12, 21):  # freq dep
-            return np.rollaxis(w1matrix.read_where(cond)['hmat'], 0, 3)
+            return np.rollaxis(w1matrix.read_where(cond)["hmat"], 0, 3)
         else:
-            raise ValueError('mtyp must be 11, 12, 21, 22, 31 or 32, '
-                             'got {}'.format(mtyp))
+            raise ValueError(
+                "mtyp must be 11, 12, 21, 22, 31 or 32, got {}".format(mtyp)
+            )
 
     def get_bodymass(self, bodyid=1, bodyid2=1):
-        """Get first order body mass matrix
-        """
+        """Get first order body mass matrix"""
         return self.get_matrix(11, bodyid, bodyid2)
 
     def get_addedmass(self, bodyid=1, bodyid2=1):
-        """Get frequency dependant first order added mass matrices
-        """
+        """Get frequency dependant first order added mass matrices"""
         return self.get_matrix(12, bodyid, bodyid2)
 
     def get_potentialdamping(self, bodyid=1, bodyid2=1):
-        """Get frequency dependant first order potential damping matrices
-        """
+        """Get frequency dependant first order potential damping matrices"""
         return self.get_matrix(21, bodyid, bodyid2)
 
     def get_viscousdamping(self, bodyid=1, bodyid2=1):
-        """Get viscous damping matrix, frequency independent
-        """
+        """Get viscous damping matrix, frequency independent"""
         return self.get_matrix(22, bodyid, bodyid2)
 
     def get_hydrostatic_restoring(self, bodyid=1, bodyid2=1):
-        """Get hydrostatic restoring matrix
-        """
+        """Get hydrostatic restoring matrix"""
         return self.get_matrix(31, bodyid, bodyid2)
 
     def get_mooring_restoring(self, bodyid=1, bodyid2=1):
-        """Get mooring restoring matrix
-        """
+        """Get mooring restoring matrix"""
         return self.get_matrix(32, bodyid, bodyid2)
 
     def get_meandrift(self, bodyid=1):
@@ -379,8 +376,8 @@ class HydroData(SifData):
             frequency.
         """
 
-        self._assert_domaintype('frequency')
-        forces = self._get_results('w2mdrift', bodyid, 'smfor')
+        self._assert_domaintype("frequency")
+        forces = self._get_results("w2mdrift", bodyid, "smfor")
         forces.shape = (self._ndirs, self._nfreqs, 6)
         return np.rollaxis(forces, 2)
 
@@ -400,20 +397,24 @@ class HydroData(SifData):
             frequency.
         """
 
-        self._assert_domaintype('frequency')
-        forces = self._get_results('w2hdrift', bodyid, 'shfor')
-        forces.shape = (self._ndirs, self._nfreqs, 3)
+        self._assert_domaintype("frequency")
+        forces = self._get_results("w2hdrift", bodyid, "shfor")
+        if self._lim_freq:
+            forces.shape = (self._ndirs, self._nfreqs - 2, 3)
+        else:
+            forces.shape = (self._ndirs, self._nfreqs, 3)
+
         return np.rollaxis(forces, 2)
 
     def _n_pressure_panels(self, bodyid=1):
         try:
-            return len(np.unique(self._get_results('w1panpre', bodyid, 'ipan')))
+            return len(np.unique(self._get_results("w1panpre", bodyid, "ipan")))
         except NoSuchRecordError:
             return 0
 
     def _n_symmetry_parts(self, bodyid=1):
         try:
-            return len(np.unique(self._get_results('w1panpre', bodyid, 'isymm1')))
+            return len(np.unique(self._get_results("w1panpre", bodyid, "isymm1")))
         except NoSuchRecordError:
             return 0
 
@@ -431,14 +432,13 @@ class HydroData(SifData):
             panel overview (panel number, symmetry) with shape (len(panels), len(symmetry_part))
             where 1st axis corresponds to the panel number,  2nd to the corresponding.
         """
-        self._assert_domaintype('frequency')
+        self._assert_domaintype("frequency")
         _npanels = self._n_pressure_panels(bodyid=bodyid)
         _nsymm = self._n_symmetry_parts(bodyid=bodyid)
 
         if _npanels != 0:
-
-            panels = self._get_results('w1panpre', bodyid, 'ipan')
-            symms = self._get_results('w1panpre', bodyid, 'isymm1')
+            panels = self._get_results("w1panpre", bodyid, "ipan")
+            symms = self._get_results("w1panpre", bodyid, "isymm1")
 
             panel_ids = []
             for symm in np.unique(symms):
@@ -468,13 +468,13 @@ class HydroData(SifData):
             and 4th to frequency.
         """
 
-        self._assert_domaintype('frequency')
+        self._assert_domaintype("frequency")
         _npanels = self._n_pressure_panels(bodyid=bodyid)
         _nsymm = self._n_symmetry_parts(bodyid=bodyid)
 
         if _npanels != 0:
-            pressures = self._get_results('w1panpre', bodyid, 'p')
-            pressures.shape = (self._ndirs, self._nfreqs,  _nsymm, _npanels)
+            pressures = self._get_results("w1panpre", bodyid, "p")
+            pressures.shape = (self._ndirs, self._nfreqs, _nsymm, _npanels)
             return np.moveaxis(pressures, [2, 3], [1, 0])
         else:
             return None
